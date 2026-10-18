@@ -1,0 +1,50 @@
+.start {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--sky) 72%, transparent);
+  backdrop-filter: blur(3px);
+  border-radius: var(--radius-panel);
+  z-index: 1;
+}
+
+.start__panel {
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+  padding: 24px;
+  text-align: center;
+}
+
+.start__title {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: 800;
+  line-height: 1.15;
+  max-width: 18ch;
+}
+
+.start__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 64px;
+  padding: 0 40px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: var(--text-xl);
+  font-weight: 800;
+}
+
+.start__btn:hover {
+  background: #26326a;
+}
+
+.start__note {
+  margin: 0;
+  max-width: 32ch;
+  font-weight: 700;
+}
