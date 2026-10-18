@@ -1,40 +1,48 @@
 # Beatmaker: design spec
 
 Date: 2026-10-17
-Status: Draft, awaiting review
+Status: Draft v2 (sweep lanes; replaces the v1 click-grid design), awaiting review
 
 ## 1. Goal
 
-A basic step-sequencer beat maker that runs in the browser. You click cells in a
-grid, press play, and hear a steady looping beat and melody. Its design draws on
-BeepBox 4.2.0, which was studied with REA (Reverse Engineer Anything).
+A browser music toy that a child can use. You move the mouse (or a finger)
+across coloured instrument lanes, as if strumming, and hear sounds straight away.
+Whatever you play is snapped to the beat and kept in a loop that is always
+playing, so you build up music by layering lanes. Every sound comes from one
+pentatonic scale and every chord is built from that scale, so overlapping lanes
+never clash. The design draws on BeepBox 4.2.0, which was studied with REA
+(Reverse Engineer Anything).
 
 ### Success criteria
 
-In Chrome, on desktop, you can:
+In Chrome, on desktop:
 
-1. Click grid cells to turn notes on and off.
-2. Press Play and hear a steady 16-step loop. The current column lights up in
-   time with the sound.
-3. Edit cells while it plays and hear the changes on the next pass of the loop.
-4. Change the tempo (30–300 BPM), the melody waveform and the volume.
-5. Reload the page, or open a copied link, and get the same song back.
-6. Download the loop as a WAV file that plays in a normal media player.
+1. After a single "Start" tap, moving the cursor across a lane plays a sound
+   each time it enters a new zone.
+2. Those sounds are snapped to the nearest eighth-note slot and repeat every
+   loop. You don't press record.
+3. Sweeping several lanes produces layered music with no clashing notes.
+4. Each lane can be cleared, and "Clear all" empties everything.
+5. Tempo (30–300 BPM), melody waveform and volume can all be changed while the
+   loop plays.
+6. Reloading the page, or opening a copied link, restores the same loop.
+7. "Save WAV" downloads the loop as a file that plays in a normal media player.
+8. Touch input works the same way as the mouse (pointer events).
 
 ### Constraints
 
 - React and Vite, plain JavaScript.
 - All files, dependencies and caches stay inside `REA demo\beatmaker\`. The npm
-  cache lives in `REA demo\.npm-cache`. No global installs and no changes to
-  system configuration.
+  cache is `REA demo\.npm-cache`. No global installs and no system
+  configuration changes.
 - Sound is generated in code with the Web Audio API. No sample files and no
   audio library.
 - The development server listens on localhost only.
 
 ### Out of scope
 
-Multiple patterns or songs, mobile layout, MIDI, recording, extra instruments,
-user accounts, and a backend.
+Multiple loops or songs, different keys or scales, recording microphone audio,
+MIDI, undo history, accounts and any backend.
 
 ## 2. What REA found in BeepBox
 
@@ -44,153 +52,217 @@ npm package (MIT). Evidence record `ev_98a4c44f…`, saved at
 
 | # | Finding | Location | Type | How this app uses it |
 |---|---------|----------|------|----------------------|
-| 1 | Play creates and resumes a single `AudioContext` (`activateAudio`). | `synth.ts:4763`, `:4795` | Observed | Create and resume the context on the first Play click. |
-| 2 | BeepBox computes every sample itself in a `ScriptProcessorNode` (now deprecated), with a 512–4096-sample buffer. | `synth.ts:4766-4777`, `:4916` | Observed | Not copied. This app uses built-in Web Audio nodes instead. |
-| 3 | Timing comes from counting samples, not timers: `samplesPerTick = sampleRate / (bpm/60 × 24 × 2)`. Tempo range is 30–300. | `synth.ts:7725`, `SynthConfig.ts:251-271` | Observed | Use a look-ahead scheduler on the audio clock, so the beat doesn't drift. Same tempo range. |
+| 1 | Play creates and resumes one `AudioContext` (`activateAudio`). | `synth.ts:4763`, `:4795` | Observed | Create and resume the context on the Start tap. Browsers require a click or tap; hovering does not count. |
+| 2 | BeepBox computes every sample itself in a `ScriptProcessorNode` (deprecated), buffer 512–4096. | `synth.ts:4766-4777`, `:4916` | Observed | Not copied. Built-in Web Audio nodes are used instead. |
+| 3 | Timing comes from counting samples, not timers: `samplesPerTick = sampleRate / (bpm/60 × 24 × 2)`. Tempo range 30–300. | `synth.ts:7725`, `SynthConfig.ts:251-271` | Observed | A look-ahead scheduler on the audio clock, so the beat doesn't drift. Same tempo range. |
 | 4 | Drums are synthesized noise (NES-style generator and white noise), cached once per drum type. | `SynthConfig.ts:585-625`, `synth.ts:7479` | Observed | Drums are filtered noise and pitched oscillators. The noise buffer is created once and reused. |
-| 5 | The whole song is serialized to compact base64: a version character, tag codes, then bit-packed note data. | `synth.ts:1885`, `:2216`, `:301` | Observed | Same idea for the URL hash. |
-| 6 | Share links and WAV export are in BeepBox's editor, which is not in the package. | n/a | Unknown | This app's own design: offline rendering with the same scheduling code. |
+| 5 | The song is serialized to compact base64: version character, tag codes, then bit-packed note data. | `synth.ts:1885`, `:2216`, `:301` | Observed | Same idea for the share link in the URL hash. |
+| 6 | BeepBox's share links and WAV export live in its editor, which is not in the package. | n/a | Unknown | This app's own design: offline rendering with the same scheduling code. |
 
-## 3. Data model
+## 3. Music rules
+
+- **Scale:** C major pentatonic (C D E G A) only.
+- **Loop:** 16 slots, each an eighth note, which is 2 bars of 4/4.
+  `slotDuration = 60 / tempo / 2` seconds. The default tempo is 100.
+- **One note per lane per slot.** Recording into a filled slot replaces the old
+  note.
+
+Lanes are listed top to bottom on screen. Zones run left to right.
+
+| Lane | Colour | Zones (left → right) |
+|------|--------|----------------------|
+| Melody | blue | C4, D4, E4, G4, A4, C5, D5, E5, G5, A5 (10 zones) |
+| Chords | purple | C (C3 E3 G3), Am (A2 C3 E3), Gsus4 (G2 C3 D3), Csus2 (C3 D3 G3) (4 zones) |
+| Bass | green | C2, D2, E2, G2, A2 (5 zones) |
+| Drums | orange | kick, snare, hi-hat (3 zones) |
+
+Frequencies use equal temperament with A4 = 440 Hz:
+`f = 440 × 2^((midi − 69) / 12)`.
+
+## 4. Interaction
+
+- **Start overlay:** a large "▶ Start" overlay covers the lanes until it is
+  tapped. The tap creates and resumes the `AudioContext` and starts the loop.
+  After that the overlay is gone and the TopBar shows a Stop/Play toggle.
+- **TopBar** (above the lanes, so reaching it never crosses a lane): Play/Stop,
+  tempo slider with its value, melody waveform select (sine, square, sawtooth,
+  triangle), volume slider, Share, Save WAV, Clear all.
+- **Sweeping:** each lane is a horizontal strip divided into equal zones. On
+  `pointermove` or `pointerdown` inside a lane, the zone under the pointer is
+  worked out. When it differs from the last zone that pointer was in for that
+  lane, the lane calls `onZone(laneId, zone)`. Leaving the lane resets the last
+  zone, so re-entering the same zone plays again.
+- **On a zone event while playing:**
+  1. Play the sound immediately (live feedback).
+  2. Work out `slot = quantize(now)`.
+  3. Record it with `recordNote(song, lane, slot, zone)`.
+  4. Tell the scheduler to skip that lane and slot if it is due within the next
+     150 ms. This avoids hearing the same hit twice.
+- **On a zone event while stopped:** play the sound only. Nothing is recorded.
+- **Loop dots:** each lane shows 16 dots at its right edge. A filled dot means a
+  note is recorded there. The dot for the current slot is highlighted on every
+  lane as the loop plays.
+- **Clearing:** a ✕ button per lane clears that lane. "Clear all" clears every
+  lane.
+
+## 5. Data model
 
 ```js
 {
-  version: 1,
-  tempo: 120,            // integer, clamped to 30..300
-  waveform: "square",    // "sine" | "square" | "sawtooth" | "triangle"
-  volume: 0.8,           // 0..1, stored in steps of 0.05
-  steps: 16,             // fixed in v1
-  grid: boolean[11][16]  // grid[row][step]
+  version: 2,
+  tempo: 100,          // integer 30..300
+  waveform: "square",  // "sine" | "square" | "sawtooth" | "triangle"
+  volume: 0.8,         // 0..1, steps of 0.05
+  lanes: {             // 16 entries each; -1 = empty, otherwise zone index
+    melody: number[16],  // 0..9
+    chords: number[16],  // 0..3
+    bass:   number[16],  // 0..4
+    drums:  number[16]   // 0..2
+  }
 }
 ```
 
-Rows:
+The default song has a tempo of 100, the square waveform, volume 0.8 and every
+lane empty.
 
-| Row | Sound |
-|-----|-------|
-| 0 | Kick |
-| 1 | Snare |
-| 2 | Hi-hat |
-| 3–10 | Melody: C major scale from C4 to C5 (C4, D4, E4, F4, G4, A4, B4, C5) |
-
-On screen, the higher notes sit at the top of the melody section and the drums
-sit at the bottom.
-
-## 4. Units
+## 6. Units
 
 | File | Responsibility | Interface |
 |------|----------------|-----------|
-| `src/song/model.js` | Row definitions, default song, pure updates | `ROWS`, `createDefaultSong()`, `toggleCell(song,row,step)`, `clearGrid(song)`, `setTempo(song,bpm)`, `setWaveform(song,w)`, `setVolume(song,v)` |
-| `src/song/codec.js` | Convert a song to and from a URL-safe string | `encodeSong(song) → string`, `decodeSong(str) → song`; throws `CodecError` on bad input |
-| `src/audio/instruments.js` | Build the Web Audio nodes for one sound, starting at `time` | `playNote(ctx,out,time,freq,waveform,vel)`, `playKick(ctx,out,time)`, `playSnare(ctx,out,time)`, `playHat(ctx,out,time)` |
-| `src/audio/scheduleStep.js` | Play every active cell in one column | `scheduleStep(ctx,out,song,step,time)` |
-| `src/audio/scheduler.js` | Look-ahead clock | `createScheduler({ctx, out, getSong, onStep})` returns `{start(), stop(), isRunning()}` |
-| `src/audio/renderWav.js` | Render offline and encode to WAV | `renderSongToWav(song, loops=1) → Promise<Blob>`, `encodeWav(audioBuffer) → ArrayBuffer` |
-| `src/components/Grid.jsx` | Clickable grid and playhead | props: `song`, `currentStep`, `onToggle` |
-| `src/components/Transport.jsx` | Play/stop button and tempo control | props: `playing`, `tempo`, `onPlay`, `onStop`, `onTempo` |
-| `src/components/SoundControls.jsx` | Waveform picker and volume slider | props: `waveform`, `volume`, `onWaveform`, `onVolume` |
-| `src/components/ShareButton.jsx` | Copy the current URL to the clipboard | props: none |
-| `src/components/ExportButton.jsx` | Render the loop and download the WAV | props: `song` |
-| `src/App.jsx` | Holds song state, keeps the URL hash in sync, owns the audio engine | none |
+| `src/music/lanes.js` | Lane and zone definitions and frequencies | `LANES` (ordered array of `{id, label, color, zones:[{label, freqs:number[]}]}` for melody, chords and bass; for drums, `{label, drum:"kick"\|"snare"\|"hat"}`), `midiToFreq(m)` |
+| `src/song/model.js` | Pure song updates | `createDefaultSong()`, `recordNote(song,lane,slot,zone)`, `clearLane(song,lane)`, `clearAll(song)`, `setTempo`, `setWaveform`, `setVolume` (all return a new song and clamp values) |
+| `src/song/codec.js` | Convert a song to and from a URL-safe string | `encodeSong(song)`, `decodeSong(str)`; throws `CodecError` |
+| `src/audio/quantize.js` | Snap a time to a slot | `quantize(time, loopStartTime, tempo) → 0..15` (nearest slot, wraps) |
+| `src/audio/instruments.js` | Build the Web Audio nodes for one sound at `time` | `playMelody(ctx,out,time,freq,waveform)`, `playBass(ctx,out,time,freq)`, `playChord(ctx,out,time,freqs)`, `playKick`, `playSnare`, `playHat` `(ctx,out,time)` |
+| `src/audio/playZone.js` | Turn a lane and zone into the right instrument call | `playZone(ctx,out,song,laneId,zone,time)` |
+| `src/audio/scheduleSlot.js` | Play every lane's note for one slot | `scheduleSlot(ctx,out,song,slot,time,skip?)` |
+| `src/audio/scheduler.js` | Look-ahead loop clock | `createScheduler({ctx,out,getSong,onSlot})` returns `{start(), stop(), isRunning(), loopStartTime(), suppress(laneId,slot)}` |
+| `src/audio/engine.js` | Owns the context and the master chain | `createEngine()` returns `{ctx, out, setVolume(v)}`; chain: sound → master gain → compressor → destination |
+| `src/audio/renderWav.js` | Render offline and encode WAV | `renderSongToWav(song) → Promise<Blob>`, `encodeWav(audioBuffer) → ArrayBuffer` |
+| `src/components/StartOverlay.jsx` | First-tap audio unlock | props: `onStart` |
+| `src/components/TopBar.jsx` | Controls | props: `song`, `playing`, `onPlay`, `onStop`, `onTempo`, `onWaveform`, `onVolume`, `onClearAll`, `onShare`, `onSaveWav`, `busy` |
+| `src/components/Lane.jsx` | Zones, pointer handling, loop dots, ✕ | props: `lane`, `slots`, `currentSlot`, `onZone`, `onClear` |
+| `src/App.jsx` | Holds state, keeps the URL in sync, connects engine, scheduler and UI | none |
 
-`instruments.js`, `scheduleStep.js` and `renderWav.js` accept any
-`BaseAudioContext`, so live playback and offline export share the same code.
+`instruments.js`, `playZone.js`, `scheduleSlot.js` and `renderWav.js` accept any
+`BaseAudioContext`, so live playback and WAV export share the same code.
 
-## 5. Codec format
+## 7. Sounds
 
-The string is URL-safe base64, using the alphabet `A–Z a–z 0–9 - _`. Each
-character holds 6 bits.
+All envelopes start at 0.0001 and use exponential ramps, so notes don't click.
 
-| Characters | Content |
-|------------|---------|
-| 1 | Format version (`1` → `B`) |
-| 2 | Tempo, 12 bits, the BPM value itself (30..300) |
-| 1 | Waveform index 0..3 |
-| 1 | Volume step 0..20 (volume × 20) |
-| 30 | Grid, 11 × 16 = 176 bits, row-major, zero-padded to 180 bits |
-
-That makes 35 characters in total. Decoding rejects strings of the wrong length,
-characters outside the alphabet, an unknown version, a tempo outside 30..300, a
-waveform index above 3, and a volume step above 20.
-
-## 6. Audio
-
-- **Master chain:** each sound → master gain (song volume) →
-  `DynamicsCompressor` (gentle limiter) → destination.
-- **Melody:** an `OscillatorNode` with the chosen waveform at the row's
-  frequency. The envelope rises to 0.3 in 5 ms and falls exponentially to 0.001
-  over 0.25 s, then the oscillator stops.
-- **Kick:** a sine wave that falls from 150 Hz to 50 Hz over 0.12 s. Gain starts
-  at 1 and decays over 0.3 s.
+- **Melody:** an oscillator with the chosen waveform. Attack to 0.25 over 5 ms,
+  decay to 0.0001 over 0.35 s.
+- **Bass:** a triangle wave plus a sine an octave lower, mixed. Peak 0.5, decay
+  over 0.4 s.
+- **Chord:** one sine and one triangle per chord note through a low-pass filter
+  at 1.8 kHz. Peak 0.12 per note, attack 30 ms, decay over 0.9 s (soft pad).
+- **Kick:** a sine wave falling from 150 Hz to 50 Hz over 0.12 s, gain 1 decaying
+  over 0.3 s.
 - **Snare:** white noise through a high-pass filter at 1 kHz, decaying over
   0.15 s, plus a 180 Hz triangle wave decaying over 0.08 s.
 - **Hi-hat:** white noise through a high-pass filter at 7 kHz, decaying over
   0.05 s.
-- **Noise buffer:** 1 second of white noise, created once per context and cached
-  in a `WeakMap`.
-- **Step length:** `60 / tempo / 4` seconds (16th notes).
-- **Scheduler:** a 25 ms `setInterval` tick. On each tick, every step whose time
-  is less than `ctx.currentTime + 0.1` is scheduled. `onStep(step)` fires as
-  close as possible to when that step is heard. The scheduler calls `getSong()`
-  for each step, so edits and tempo changes apply on the next step.
-- **Audio start:** the `AudioContext` is created lazily and `resume()` is called
-  on the first Play click.
-- **WAV export:** an `OfflineAudioContext` at 44.1 kHz, stereo, with a length of
-  one loop plus a 0.5 s tail. Every step is scheduled at its offline time, then
-  the result is encoded as 16-bit PCM WAV with samples clamped to −1..1. The file
-  is named `beatmaker-<tempo>bpm.wav`.
+- **Noise buffer:** 1 s of white noise per context, cached in a `WeakMap`.
 
-## 7. URL sync
+## 8. Scheduler
 
-- **On load:** if `location.hash` decodes, use that song. If it is empty, use the
-  default song. If decoding fails, use the default song and show a message:
-  "Couldn't read that song link, started a new one".
-- **On change:** call
-  `history.replaceState(null, "", "#" + encodeSong(song))`, which adds no history
-  entries.
+- A `setInterval` tick runs every 25 ms. Each tick schedules every slot whose
+  time is less than `ctx.currentTime + 0.1` s, using `scheduleSlot` with the
+  latest `getSong()`.
+- After each slot, the next slot time is the current one plus
+  `60 / tempo / 2`. A tempo change takes effect from the next slot.
+  `loopStartTime` is re-anchored each time the slot number wraps to 0.
+- `onSlot(slot)` is called with a `setTimeout` timed to when the slot is
+  actually heard, which drives the UI highlight.
+- `suppress(laneId, slot)` skips that lane and slot once, if it is already
+  queued or is due within 150 ms.
 
-## 8. Errors and edge cases
+## 9. Codec format
+
+The string uses URL-safe base64 (`A–Z a–z 0–9 - _`), 6 bits per character.
+
+| Characters | Content |
+|------------|---------|
+| 1 | Format version (2) |
+| 2 | Tempo, 12 bits (30..300) |
+| 1 | Waveform index 0..3 |
+| 1 | Volume step 0..20 (volume × 20) |
+| 43 | Lanes in order melody, chords, bass, drums; 16 slots each; 4 bits per slot (15 = empty); 256 bits, zero-padded to 258 |
+
+That makes 48 characters. Decoding rejects strings of the wrong length,
+characters outside the alphabet, a version other than 2, a tempo outside
+30..300, a waveform index above 3, a volume step above 20, and a zone index
+outside the lane's range (other than 15).
+
+## 10. URL sync
+
+- **On load:** decode `location.hash`. If the hash is empty, use the default
+  song. If decoding fails, use the default song and show the message "Couldn't
+  read that song link, started a new one".
+- **On every song change:**
+  `history.replaceState(null, "", "#" + encodeSong(song))`.
+
+## 11. WAV export
+
+An `OfflineAudioContext` at 44.1 kHz, stereo, with a length of one loop plus a
+1 s tail, using the same master chain. Every slot is scheduled at its offline
+time with `scheduleSlot`. The result is encoded as 16-bit PCM WAV with samples
+clamped to −1..1, and downloaded as `beatmaker-<tempo>bpm.wav`.
+
+## 12. Errors and edge cases
 
 - **No Web Audio:** if `window.AudioContext` is missing, show a "browser not
-  supported" banner and disable Play and Export.
-- **Tempo input:** values are clamped and rounded before they reach the model.
+  supported" banner and disable Start.
+- **Settings input:** tempo, volume and waveform are clamped or validated in the
+  model.
 - **WAV export:** the button shows "Rendering…" and is disabled while rendering.
-  On failure, show an error message and re-enable the button.
-- **Clipboard:** if copying fails, select the URL text and show a "Copy the link
-  above" message.
-- **Hidden tab:** browsers throttle intervals in background tabs. Scheduling
-  ahead keeps short throttles from being heard. Long gaps are not handled in v1.
+  On failure, show an error message and re-enable it.
+- **Clipboard:** if copying fails, show the URL in a selectable box with "Copy
+  this link".
+- **Old links:** a v1 link fails the version check and is treated as a bad link.
+- **Background tabs:** scheduling ahead absorbs short timer throttling. Long
+  gaps are not handled in v1.
 
-## 9. Testing
+## 13. Testing
 
 Vitest with jsdom. Each unit is written test-first.
 
-- **codec:**
-  - Round-trip gives back the identical song for an empty grid, a full grid,
-    20 random grids, tempo 30 and tempo 300, and every waveform.
-  - Bad input is rejected: wrong length, bad characters, wrong version, and
-    values out of range.
+- **lanes:**
+  - Every melody and bass frequency, and every chord note, maps to a pitch class
+    in {C, D, E, G, A}. This is the "no wrong notes" guarantee.
+  - Zone counts are 10, 4, 5 and 3.
+  - `midiToFreq(69) = 440`.
 - **model:**
-  - Toggling a cell flips only that cell and does not mutate the input.
-  - Clearing empties the grid.
+  - `recordNote` replaces a filled slot and leaves the input unchanged.
+  - Clearing one lane and clearing all both work.
   - Setters clamp out-of-range values.
-  - Melody row frequencies are correct (C4 = 261.63 Hz, C5 = 523.25 Hz).
-- **scheduler:**
-  - With a fake context clock and fake timers, steps are spaced exactly
-    `60/tempo/4` apart.
-  - The step number wraps from 15 to 0.
-  - A tempo change applies on the next step.
-  - `stop()` stops further scheduling.
-- **scheduleStep:** with a stub context, a column with kick + E4 calls
-  `playKick` and `playNote(…, 329.63, …)` at the given time.
-- **encodeWav:** the header has RIFF/WAVE/fmt/data, the sample rate, channel
-  count and byte sizes are correct, and samples convert correctly (1.0 → 32767,
-  −1.0 → −32768, clamped).
-- **Manual check in Chrome:** every success criterion in section 1.
+- **codec:**
+  - Round-trip gives back the identical song for an empty song, a full song,
+    20 random songs, tempo 30 and 300, and every waveform.
+  - Every invalid input listed in §9 is rejected.
+- **quantize:**
+  - Times just before and just after a slot boundary round to the nearest slot.
+  - Slot 15.6 wraps to 0.
+  - Results are correct at tempos 60, 100 and 300.
+- **scheduler** (fake context clock, fake timers):
+  - Slots are spaced `60/tempo/2` apart.
+  - The slot number wraps from 15 to 0.
+  - A tempo change applies on the next slot.
+  - A suppressed lane and slot is skipped once.
+  - `stop()` halts scheduling.
+- **scheduleSlot / playZone** (stub instruments):
+  - Each lane routes to the right instrument with the right frequencies.
+  - Empty slots play nothing.
+- **encodeWav:**
+  - RIFF/WAVE/fmt/data headers are correct.
+  - Sample rate, channel count and sizes are correct.
+  - Samples convert correctly (1.0 → 32767, −1.0 → −32768) and are clamped.
+- **Manual check in Chrome:** every success criterion in §1.
 
-## 10. Project setup
+## 14. Project setup
 
 - `REA demo\beatmaker\` is created from Vite's React template.
 - Dependencies are installed locally with the in-folder npm cache.
-- A local git repository is initialized in `beatmaker\` only.
+- The git repository is local to `beatmaker\`.
 - Scripts: `npm run dev` (localhost), `npm test`, `npm run build`.
