@@ -1,0 +1,136 @@
+.lane {
+  display: grid;
+  grid-template-columns: 120px 1fr auto;
+  align-items: center;
+  gap: var(--gap);
+}
+
+.lane__name {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Small swatch ties the name to its bar without relying on colour alone. */
+.lane__name::before {
+  content: "";
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--lane);
+  flex: none;
+}
+
+.lane__keys {
+  display: flex;
+  gap: 3px;
+  min-height: 72px;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.lane__key {
+  flex: 1 1 0;
+  min-width: 0;
+  border: 0;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: var(--text-md);
+  padding: 0 2px;
+  transition: transform var(--hit-ms) ease-out, filter var(--hit-ms) ease-out;
+}
+
+.lane__key:first-child {
+  border-radius: var(--radius-bar) 6px 6px var(--radius-bar);
+}
+
+.lane__key:last-child {
+  border-radius: 6px var(--radius-bar) var(--radius-bar) 6px;
+}
+
+.lane__key.is-hit {
+  transform: scale(1.06);
+  filter: brightness(1.18);
+  transition-duration: 40ms;
+}
+
+.lane__side {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 16 slots as two rows of 8; the gap after every 4th dot marks the beat. */
+.lane__dots {
+  display: grid;
+  grid-template-columns: repeat(8, auto);
+  column-gap: 4px;
+  row-gap: 6px;
+}
+
+.lane__dot:nth-child(4n + 1):not(:nth-child(8n + 1)) {
+  margin-left: 4px;
+}
+
+.lane__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--lane) 45%, transparent);
+}
+
+.lane__dot.is-filled {
+  background: var(--lane);
+  box-shadow: none;
+}
+
+.lane__dot.is-now {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+
+.lane__clear {
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-soft);
+}
+
+.lane__clear:hover {
+  background: color-mix(in srgb, var(--lane) 14%, transparent);
+  color: var(--ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lane__key.is-hit {
+    transform: none;
+    filter: none;
+    outline: 3px solid var(--ink);
+    outline-offset: -3px;
+  }
+}
+
+@media (max-width: 640px) {
+  .lane {
+    grid-template-columns: 1fr auto;
+    row-gap: 6px;
+  }
+
+  .lane__keys {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    min-height: 56px;
+  }
+
+  .lane__key {
+    font-size: var(--text-sm);
+  }
+}
