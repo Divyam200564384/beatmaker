@@ -7,6 +7,14 @@
 }
 
 .app__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 24px;
+}
+
+.app__intro {
   display: grid;
   gap: 2px;
 }
@@ -22,16 +30,6 @@
   margin: 0;
   color: var(--ink-soft);
   max-width: 60ch;
-}
-
-.app__messages {
-  min-height: 24px;
-}
-
-.app__status {
-  margin: 0;
-  font-weight: 700;
-  font-size: var(--text-sm);
 }
 
 .app__share {

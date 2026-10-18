@@ -13,7 +13,7 @@ export default function StartOverlay({ supported, onStart }) {
             Start
           </button>
         ) : (
-          <p className="start__note">This browser can't play Web Audio. Try Chrome, Edge or Firefox.</p>
+          <p className="start__note">{"This browser can't play Web Audio. Try Chrome, Edge or Firefox."}</p>
         )}
       </div>
     </div>

@@ -1,3 +1,4 @@
+import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -44,5 +45,34 @@ describe("App", () => {
     const melody = decodeSong(location.hash.slice(1)).lanes.melody;
     expect(melody.filter((v) => v !== -1).length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Stop" })).toBeInTheDocument();
+  });
+});
+
+describe("App audio lifetime", () => {
+  const fakeCtor = (made) =>
+    function FakeAudioContext() {
+      const ctx = Object.assign(createFakeContext(), { state: "running", resume: () => Promise.resolve() });
+      ctx.close = () => { ctx.state = "closed"; return Promise.resolve(); };
+      made.push(ctx);
+      return ctx;
+    };
+
+  test("works under StrictMode: Start then sweep records notes", async () => {
+    const made = [];
+    window.AudioContext = fakeCtor(made);
+    render(<StrictMode><App /></StrictMode>);
+    await userEvent.click(screen.getByRole("button", { name: "Start" }));
+    sweepMelody();
+    expect(made.at(-1).state).toBe("running");
+    expect(decodeSong(location.hash.slice(1)).lanes.melody.some((v) => v !== -1)).toBe(true);
+  });
+
+  test("unmounting after Start closes the audio context", async () => {
+    const made = [];
+    window.AudioContext = fakeCtor(made);
+    const { unmount } = render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Start" }));
+    unmount();
+    expect(made.every((c) => c.state === "closed")).toBe(true);
   });
 });

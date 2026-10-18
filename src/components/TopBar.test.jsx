@@ -3,12 +3,12 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import TopBar from "./TopBar.jsx";
 import StartOverlay from "./StartOverlay.jsx";
+import SongActions from "./SongActions.jsx";
 import { createDefaultSong } from "../song/model.js";
 
 function setup(props = {}) {
   const handlers = {
     onPlay: vi.fn(), onStop: vi.fn(), onTempo: vi.fn(), onWaveform: vi.fn(), onVolume: vi.fn(),
-    onShare: vi.fn(), onSaveWav: vi.fn(), onClearAll: vi.fn(),
   };
   render(<TopBar song={createDefaultSong()} playing={false} busy={false} {...handlers} {...props} />);
   return handlers;
@@ -46,24 +46,35 @@ describe("TopBar", () => {
     expect(h.onVolume).toHaveBeenCalledWith(0.5);
   });
 
-  test("busy disables Save WAV and shows Rendering…", () => {
-    setup({ busy: true });
-    const btn = screen.getByRole("button", { name: "Rendering…" });
-    expect(btn).toBeDisabled();
-  });
+});
 
-  test("Share and Clear all call their handlers", async () => {
-    const h = setup();
+describe("TopBar status", () => {
+  test("shows the status message in a polite live region", () => {
+    setup({ status: "Link copied" });
+    expect(screen.getByRole("status")).toHaveTextContent("Link copied");
+  });
+});
+
+describe("SongActions", () => {
+  function setupActions(props = {}) {
+    const h = { onShare: vi.fn(), onSaveWav: vi.fn(), onClearAll: vi.fn() };
+    render(<SongActions busy={false} {...h} {...props} />);
+    return h;
+  }
+
+  test("Share, Save WAV and Clear all call their handlers", async () => {
+    const h = setupActions();
     await userEvent.click(screen.getByRole("button", { name: "Share" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save WAV" }));
     await userEvent.click(screen.getByRole("button", { name: "Clear all" }));
     expect(h.onShare).toHaveBeenCalled();
+    expect(h.onSaveWav).toHaveBeenCalled();
     expect(h.onClearAll).toHaveBeenCalled();
   });
 
-  test("Save WAV calls onSaveWav", async () => {
-    const h = setup();
-    await userEvent.click(screen.getByRole("button", { name: "Save WAV" }));
-    expect(h.onSaveWav).toHaveBeenCalled();
+  test("busy disables Save WAV and shows Rendering…", () => {
+    setupActions({ busy: true });
+    expect(screen.getByRole("button", { name: "Rendering…" })).toBeDisabled();
   });
 });
 

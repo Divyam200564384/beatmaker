@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import Lane from "./components/Lane.jsx";
 import StartOverlay from "./components/StartOverlay.jsx";
 import TopBar from "./components/TopBar.jsx";
+import SongActions from "./components/SongActions.jsx";
 import { LANES } from "./music/lanes.js";
 import { createEngine } from "./audio/engine.js";
 import { createScheduler } from "./audio/scheduler.js";
@@ -21,7 +22,8 @@ export default function App() {
 
   const engineRef = useRef(null);
   const schedulerRef = useRef(null);
-  const [started, setStarted] = useState(false);
+  const [engine, setEngine] = useState(null);
+  const started = engine !== null;
   const [playing, setPlaying] = useState(false);
   const [currentSlot, setCurrentSlot] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -39,26 +41,34 @@ export default function App() {
     return () => clearTimeout(t);
   }, [status]);
 
-  useEffect(
-    () => () => {
-      schedulerRef.current?.stop();
-      engineRef.current?.ctx.close?.();
-    },
-    [],
-  );
-
-  function start() {
-    const engine = createEngine(songRef.current.volume);
-    engineRef.current = engine;
-    engine.resume();
-    schedulerRef.current = createScheduler({
+  // The loop clock lives exactly as long as the engine it drives. Tying both
+  // to one effect means a teardown (including StrictMode's practice unmount)
+  // can only close the engine that the same effect set up.
+  useEffect(() => {
+    if (!engine) return;
+    const scheduler = createScheduler({
       ctx: engine.ctx,
       out: engine.out,
       getSong: () => songRef.current,
       onSlot: setCurrentSlot,
     });
-    setStarted(true);
-    play();
+    engineRef.current = engine;
+    schedulerRef.current = scheduler;
+    scheduler.start();
+    return () => {
+      scheduler.stop();
+      engine.ctx.close?.();
+      engineRef.current = null;
+      schedulerRef.current = null;
+    };
+  }, [engine]);
+
+  // Created inside the Start tap: browsers only allow audio after a gesture.
+  function start() {
+    const created = createEngine(songRef.current.volume);
+    created.resume();
+    setEngine(created);
+    setPlaying(true);
   }
 
   function play() {
@@ -121,33 +131,30 @@ export default function App() {
   return (
     <main className="app">
       <header className="app__header">
-        <h1 className="app__title">Beatmaker</h1>
-        <p className="app__help">Move across a colour to play it. Everything you play joins the loop.</p>
+        <div className="app__intro">
+          <h1 className="app__title">Beatmaker</h1>
+          <p className="app__help">Move across a colour to play it. Everything you play joins the loop.</p>
+        </div>
+        <SongActions busy={busy} onShare={share} onSaveWav={saveWav} onClearAll={() => setSong(clearAll)} />
       </header>
 
       <TopBar
         song={song}
         playing={playing}
-        busy={busy}
+        status={status}
         onPlay={started ? play : start}
         onStop={stop}
         onTempo={(bpm) => setSong((s) => setTempo(s, bpm))}
         onWaveform={(w) => setSong((s) => setWaveform(s, w))}
         onVolume={handleVolume}
-        onShare={share}
-        onSaveWav={saveWav}
-        onClearAll={() => setSong(clearAll)}
       />
 
-      <div className="app__messages">
-        <p className="app__status" role="status" aria-live="polite">{status}</p>
-        {shareFallback && (
-          <label className="app__share">
-            Copy this link
-            <input readOnly value={shareFallback} onFocus={(e) => e.target.select()} autoFocus />
-          </label>
-        )}
-      </div>
+      {shareFallback && (
+        <label className="app__share">
+          Copy this link
+          <input readOnly value={shareFallback} onFocus={(e) => e.target.select()} autoFocus />
+        </label>
+      )}
 
       <div className="app__stage">
         <div className="app__lanes">
