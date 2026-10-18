@@ -85,3 +85,31 @@ describe("scheduler", () => {
     expect(scheduler.isRunning()).toBe(false);
   });
 });
+
+describe("scheduler slot grid (final review)", () => {
+  test("slotAt maps a time to the slot actually scheduled there after a mid-loop tempo change", () => {
+    scheduler.start();
+    advance(2.5); // slots 0..8 at tempo 100 (0.05 .. 2.45)
+    song = setTempo(song, 60);
+    advance(3.3); // slots 9 (2.75) and 10 (3.25) at 60 BPM spacing after slot 9
+    const slot10 = calls().find((c) => c.slot === 10);
+    expect(scheduler.slotAt(slot10.time)).toBe(10);
+    expect(scheduler.slotAt(slot10.time + 0.2)).toBe(10);
+  });
+
+  test("slotAt rounds to the upcoming unscheduled slot when that is nearest", () => {
+    scheduler.start();
+    advance(0.0); // slot 0 at 0.05 queued, next slot 1 at 0.35
+    expect(scheduler.slotAt(0.3)).toBe(1);
+    expect(scheduler.slotAt(0.1)).toBe(0);
+  });
+
+  test("at 60 BPM a live hit 0.2 s before the next unqueued slot is not heard twice", () => {
+    song = setTempo(song, 60);
+    scheduler.start(); // slot 0 at 0.05, next slot 1 at 0.55 (not yet queued)
+    ctx.currentTime = 0.35;
+    scheduler.suppress("drums", 1);
+    advance(0.5);
+    expect(calls().find((c) => c.slot === 1).skip.has("drums:1")).toBe(true);
+  });
+});

@@ -95,3 +95,44 @@ describe("Lane", () => {
     expect(screen.getByRole("img", { name: "3 notes in loop" })).toBeInTheDocument();
   });
 });
+
+describe("Lane (final review)", () => {
+  test("a jump across several zones between events fires every zone in between, in order", () => {
+    const { onZone, move } = setup();
+    move(50);
+    move(950);
+    expect(onZone.mock.calls.map((c) => c[1])).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  });
+
+  test("moving right to left also fills in, in order", () => {
+    const { onZone, move } = setup();
+    move(650);
+    move(250);
+    expect(onZone.mock.calls.map((c) => c[1])).toEqual([6, 5, 4, 3, 2]);
+  });
+
+  test("pointerdown releases implicit touch capture so the finger can move to other lanes", () => {
+    setup();
+    const key = screen.getByRole("button", { name: "Melody C4" });
+    key.hasPointerCapture = vi.fn(() => true);
+    key.releasePointerCapture = vi.fn();
+    fireEvent.pointerDown(key, { clientX: 10, clientY: 10, pointerId: 7, pointerType: "touch" });
+    expect(key.releasePointerCapture).toHaveBeenCalledWith(7);
+  });
+
+  test("moves whose clientY is outside the bar are ignored", () => {
+    const { onZone, keys } = setup();
+    fireEvent.pointerMove(keys, { clientX: 250, clientY: 200, pointerId: 1 });
+    expect(onZone).not.toHaveBeenCalled();
+  });
+
+  test("assistive-technology click (detail 0) plays the key; a mouse click (detail 1) does not double-fire", () => {
+    const { onZone } = setup();
+    const key = screen.getByRole("button", { name: "Melody E4" });
+    fireEvent.click(key, { detail: 0 });
+    expect(onZone).toHaveBeenCalledWith("melody", 2);
+    onZone.mockClear();
+    fireEvent.click(key, { detail: 1 });
+    expect(onZone).not.toHaveBeenCalled();
+  });
+});

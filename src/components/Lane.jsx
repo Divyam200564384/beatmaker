@@ -38,21 +38,31 @@ export default function Lane({ lane, slots, currentSlot, onZone, onClear }) {
   }
 
   function handlePointer(e) {
-    const zone = zoneFromX(e.clientX, keysRef.current.getBoundingClientRect(), count);
-    if (lastZone.current.get(e.pointerId) === zone) return;
+    // Touch pointers are implicitly captured by the pressed element; release
+    // so a finger can strum from this lane into the next one.
+    if (e.type === "pointerdown" && e.target.hasPointerCapture?.(e.pointerId)) {
+      e.target.releasePointerCapture(e.pointerId);
+    }
+    const rect = keysRef.current.getBoundingClientRect();
+    if (e.clientY < rect.top || e.clientY > rect.bottom) {
+      lastZone.current.delete(e.pointerId);
+      return;
+    }
+    const zone = zoneFromX(e.clientX, rect, count);
+    const last = lastZone.current.get(e.pointerId);
+    if (last === zone) return;
     lastZone.current.set(e.pointerId, zone);
+    // Browsers coalesce moves to about one per frame; play every zone a fast
+    // strum skipped over, in order.
+    if (last !== undefined) {
+      const step = zone > last ? 1 : -1;
+      for (let z = last + step; z !== zone; z += step) fire(z);
+    }
     fire(zone);
   }
 
   function forget(e) {
     lastZone.current.delete(e.pointerId);
-  }
-
-  function handleKey(e, zone) {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      fire(zone);
-    }
   }
 
   return (
@@ -77,7 +87,9 @@ export default function Lane({ lane, slots, currentSlot, onZone, onClear }) {
             className={`lane__key${hits.has(i) ? " is-hit" : ""}`}
             style={{ background: keyColor(lane.hex, i, count), color: keyTextColor(lane.hex, i, count) }}
             aria-label={`${lane.label} ${keyName(zone)}`}
-            onKeyDown={(e) => handleKey(e, i)}
+            // detail 0 = a click from the keyboard (Enter/Space) or assistive
+            // technology; pointer clicks are already played by pointerdown.
+            onClick={(e) => e.detail === 0 && fire(i)}
           >
             {zone.label}
           </button>

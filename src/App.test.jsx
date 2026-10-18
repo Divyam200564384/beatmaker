@@ -1,9 +1,10 @@
 import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "./App.jsx";
-import { decodeSong } from "./song/codec.js";
+import { decodeSong, encodeSong } from "./song/codec.js";
+import { createDefaultSong, setVolume } from "./song/model.js";
 import { createFakeContext } from "./test/fakeAudio.js";
 
 const original = window.AudioContext;
@@ -74,5 +75,43 @@ describe("App audio lifetime", () => {
     await userEvent.click(screen.getByRole("button", { name: "Start" }));
     unmount();
     expect(made.every((c) => c.state === "closed")).toBe(true);
+  });
+});
+
+describe("App (final review)", () => {
+  test("a second bad link in a row shows the message again", () => {
+    vi.useFakeTimers();
+    try {
+      window.AudioContext = function FakeAudioContext() {};
+      history.replaceState(null, "", "#bad-one");
+      render(<App />);
+      expect(screen.getByRole("status")).toHaveTextContent("Couldn't read that song link");
+      act(() => vi.advanceTimersByTime(4500));
+      expect(screen.getByRole("status")).toHaveTextContent("");
+      act(() => {
+        history.replaceState(null, "", "#bad-two");
+        window.dispatchEvent(new HashChangeEvent("hashchange"));
+      });
+      expect(screen.getByRole("status")).toHaveTextContent("Couldn't read that song link");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("loading a link while playing applies its volume to the audio", async () => {
+    const made = [];
+    window.AudioContext = function FakeAudioContext() {
+      const c = Object.assign(createFakeContext(), { resume: () => Promise.resolve(), close: () => Promise.resolve() });
+      made.push(c);
+      return c;
+    };
+    render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Start" }));
+    const master = made[0].created.find((n) => n.kind === "gain");
+    act(() => {
+      history.replaceState(null, "", "#" + encodeSong(setVolume(createDefaultSong(), 0.2)));
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    });
+    expect(master.gain.value).toBeCloseTo(0.2, 6);
   });
 });

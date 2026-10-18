@@ -6,7 +6,6 @@ import { slotDuration } from "./quantize.js";
 
 const SLOTS = 16;
 const START_DELAY = 0.05;
-const SUPPRESS_WINDOW = 0.15;
 
 export function createScheduler({ ctx, out, getSong, onSlot, schedule = scheduleSlot, lookahead = 0.1, interval = 25 }) {
   let running = false;
@@ -15,6 +14,7 @@ export function createScheduler({ ctx, out, getSong, onSlot, schedule = schedule
   let nextTime = 0;
   let loopStart = 0;
   let suppressed = new Set();
+  let recent = []; // the last 16 scheduled { slot, time } — the real slot grid
   const pending = new Set();
 
   function tick() {
@@ -25,6 +25,8 @@ export function createScheduler({ ctx, out, getSong, onSlot, schedule = schedule
       const skip = new Set([...suppressed].filter((key) => key.endsWith(`:${slot}`)));
       for (const key of skip) suppressed.delete(key);
       schedule(ctx, out, song, slot, nextTime, skip);
+      recent.push({ slot, time: nextTime });
+      if (recent.length > SLOTS) recent.shift();
       const t = setTimeout(() => {
         pending.delete(t);
         onSlot(slot);
@@ -43,6 +45,7 @@ export function createScheduler({ ctx, out, getSong, onSlot, schedule = schedule
       nextTime = ctx.currentTime + START_DELAY;
       loopStart = nextTime;
       suppressed = new Set();
+      recent = [];
       timer = setInterval(tick, interval);
       tick();
     },
@@ -54,11 +57,18 @@ export function createScheduler({ ctx, out, getSong, onSlot, schedule = schedule
     },
     isRunning: () => running,
     loopStartTime: () => loopStart,
-    // Skip one upcoming slot for a lane whose note was just played live,
-    // so the same hit isn't heard twice.
+    // The slot whose actual scheduled time is nearest to `time`, measured on
+    // the grid that was really played (so tempo changes mid-loop stay exact).
+    slotAt(time) {
+      let best = { slot: nextSlot, time: nextTime };
+      for (const entry of recent) if (Math.abs(entry.time - time) < Math.abs(best.time - time)) best = entry;
+      return best.slot;
+    },
+    // Skip the upcoming, not-yet-queued slot once for a lane whose note was
+    // just played live, so the same hit isn't heard twice. Slots already queued
+    // were scheduled before the note existed and can't double.
     suppress(laneId, slot) {
-      if (running && slot === nextSlot && nextTime < ctx.currentTime + SUPPRESS_WINDOW)
-        suppressed.add(`${laneId}:${slot}`);
+      if (running && slot === nextSlot) suppressed.add(`${laneId}:${slot}`);
     },
   };
 }

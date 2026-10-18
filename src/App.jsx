@@ -7,7 +7,6 @@ import { LANES } from "./music/lanes.js";
 import { createEngine } from "./audio/engine.js";
 import { createScheduler } from "./audio/scheduler.js";
 import { playZone } from "./audio/playZone.js";
-import { quantize } from "./audio/quantize.js";
 import { renderSongToWav, wavFileName } from "./audio/renderWav.js";
 import { clearAll, clearLane, recordNote, setTempo, setVolume, setWaveform } from "./song/model.js";
 import { useSongUrl } from "./useSongUrl.js";
@@ -16,7 +15,7 @@ import "./App.css";
 const STATUS_MS = 4000;
 
 export default function App() {
-  const [song, setSong, linkError] = useSongUrl();
+  const [song, setSong, linkError, linkErrorSeq] = useSongUrl();
   const songRef = useRef(song);
   songRef.current = song;
 
@@ -27,19 +26,27 @@ export default function App() {
   const [playing, setPlaying] = useState(false);
   const [currentSlot, setCurrentSlot] = useState(null);
   const [busy, setBusy] = useState(false);
-  const [status, setStatus] = useState(null);
+  // Each message gets a fresh id so repeating the same text shows it again.
+  const [status, setStatusState] = useState(null);
+  const statusId = useRef(0);
+  const setStatus = (text) => setStatusState({ text, id: ++statusId.current });
   const [shareFallback, setShareFallback] = useState(null);
   const supported = typeof window.AudioContext === "function";
 
   useEffect(() => {
     if (linkError) setStatus(linkError);
-  }, [linkError]);
+  }, [linkError, linkErrorSeq]);
 
   useEffect(() => {
     if (!status) return;
-    const t = setTimeout(() => setStatus(null), STATUS_MS);
+    const t = setTimeout(() => setStatusState(null), STATUS_MS);
     return () => clearTimeout(t);
   }, [status]);
+
+  // The audio follows the song's volume however it changed (slider or link).
+  useEffect(() => {
+    engine?.setVolume(song.volume);
+  }, [engine, song.volume]);
 
   // The loop clock lives exactly as long as the engine it drives. Tying both
   // to one effect means a teardown (including StrictMode's practice unmount)
@@ -90,14 +97,13 @@ export default function App() {
     playZone(ctx, out, songRef.current, laneId, zone, ctx.currentTime);
     const scheduler = schedulerRef.current;
     if (!scheduler?.isRunning()) return;
-    const slot = quantize(ctx.currentTime, scheduler.loopStartTime(), songRef.current.tempo);
+    const slot = scheduler.slotAt(ctx.currentTime);
     scheduler.suppress(laneId, slot);
     setSong((s) => recordNote(s, laneId, slot, zone));
   }
 
   function handleVolume(v) {
     setSong((s) => setVolume(s, v));
-    engineRef.current?.setVolume(v);
   }
 
   async function share() {
@@ -141,7 +147,7 @@ export default function App() {
       <TopBar
         song={song}
         playing={playing}
-        status={status}
+        status={status?.text ?? null}
         onPlay={started ? play : start}
         onStop={stop}
         onTempo={(bpm) => setSong((s) => setTempo(s, bpm))}
