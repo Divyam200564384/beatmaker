@@ -1,0 +1,21 @@
+:root {
+  --sky: #e6eefb;
+  --ink: #16204a;
+  --ink-soft: #3a4470;
+  --paper: #ffffff;
+  --melody: #2c5be8;
+  --chords: #8b4bd6;
+  --bass: #13906a;
+  --drums: #e8632b;
+
+  --font: "Baloo 2", system-ui, sans-serif;
+  --text-sm: 14px;
+  --text-md: 16px;
+  --text-lg: 20px;
+  --text-xl: 28px;
+
+  --radius-bar: 18px;
+  --radius-panel: 14px;
+  --gap: 12px;
+  --hit-ms: 180ms;
+}
