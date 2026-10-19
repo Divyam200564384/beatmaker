@@ -1,6 +1,6 @@
 # Beatmaker
 
-**Play it:** https://codewithdivyam.github.io/beatmaker/
+**Play it:** https://divyam200564384.github.io/beatmaker/
 
 A music toy anyone can use — even a child. Sweep a finger or mouse across the four
 coloured lanes (Melody, Chords, Bass, Drums) and each note snaps into an always-on
