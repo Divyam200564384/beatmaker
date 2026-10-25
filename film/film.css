@@ -1,0 +1,181 @@
+/* Every animated state comes from the timeline, never from CSS. */
+*, *::before, *::after {
+  transition: none !important;
+  animation: none !important;
+}
+
+html, body {
+  margin: 0;
+  overflow: hidden;
+  background: var(--sky);
+}
+
+.f-stage {
+  position: relative;
+  overflow: hidden;
+  background: var(--sky);
+}
+
+.f-world {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+}
+
+.f-veil {
+  position: absolute;
+  inset: 0;
+  background: var(--sky);
+}
+
+.f-title {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.f-title__brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 800;
+  color: var(--ink-soft);
+}
+
+.f-swatches {
+  display: inline-flex;
+  gap: 5px;
+}
+
+.f-swatches b {
+  width: 0.55em;
+  height: 0.55em;
+  border-radius: 50%;
+}
+
+.f-swatches b:nth-child(1) { background: var(--melody); }
+.f-swatches b:nth-child(2) { background: var(--chords); }
+.f-swatches b:nth-child(3) { background: var(--bass); }
+.f-swatches b:nth-child(4) { background: var(--drums); }
+
+.f-title__main {
+  font-weight: 800;
+  line-height: 0.98;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.f-band {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  place-items: center;
+  background: var(--ink);
+  overflow: hidden;
+}
+
+.f-caption {
+  color: var(--paper);
+  font-weight: 800;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.f-cta {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  padding-top: 3%;
+  left: 0;
+  right: 0;
+  align-content: start;
+  display: grid;
+  justify-items: center;
+  text-align: center;
+}
+
+.f-cta > :not(.f-cta__band) {
+  position: relative;
+}
+
+/* Clears the app header from behind the call to action. */
+.f-cta__band {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40%;
+  background: linear-gradient(var(--sky) 86%, transparent);
+}
+
+.f-cta__main {
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.f-cta__sub {
+  margin-top: 4px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.f-cursor {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.f-cursor svg {
+  position: absolute;
+  left: -4px;
+  top: -3px;
+  transform-origin: 4px 3px;
+  filter: drop-shadow(0 3px 4px rgb(22 32 74 / 35%));
+}
+
+.f-cursor i {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 3px solid var(--ink);
+}
+
+.f-touch {
+  position: absolute;
+  width: 46px;
+  height: 46px;
+}
+
+.f-touch span {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  /* Lifted finger: a hollow, softer ring, so it never looks like a press. */
+  border: 3px dashed rgb(22 32 74 / 55%);
+}
+
+.f-touch span.is-down {
+  background: rgb(22 32 74 / 35%);
+  border: 3px solid var(--ink);
+  box-shadow: 0 4px 12px rgb(22 32 74 / 30%);
+}
+
+.f-touch i {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid var(--ink);
+}

@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { CircleHelp } from "lucide-react";
 import Lane from "./components/Lane.jsx";
 import StartOverlay from "./components/StartOverlay.jsx";
+import Tutorial, { hasSeenTutorial, markTutorialSeen } from "./components/Tutorial.jsx";
 import TopBar from "./components/TopBar.jsx";
 import SongActions from "./components/SongActions.jsx";
 import { LANES } from "./music/lanes.js";
@@ -32,6 +34,18 @@ export default function App() {
   const setStatus = (text) => setStatusState({ text, id: ++statusId.current });
   const [shareFallback, setShareFallback] = useState(null);
   const supported = typeof window.AudioContext === "function";
+  const [showTutorial, setShowTutorial] = useState(() => !hasSeenTutorial());
+
+  const closeTutorial = useCallback(() => {
+    markTutorialSeen();
+    setShowTutorial(false);
+  }, []);
+
+  // The last step's button is a real tap, so it can switch the sound on too.
+  function finishTutorial() {
+    closeTutorial();
+    if (supported && !engineRef.current) start();
+  }
 
   useEffect(() => {
     if (linkError) setStatus(linkError);
@@ -138,7 +152,13 @@ export default function App() {
     <main className="app">
       <header className="app__header">
         <div className="app__intro">
-          <h1 className="app__title">Beatmaker</h1>
+          <div className="app__titlerow">
+            <h1 className="app__title">Beatmaker</h1>
+            <button type="button" className="app__howto" onClick={() => setShowTutorial(true)}>
+              <CircleHelp size={18} aria-hidden="true" />
+              How to play
+            </button>
+          </div>
           <p className="app__help">Move across a colour to play it. Everything you play joins the loop.</p>
         </div>
         <SongActions busy={busy} onShare={share} onSaveWav={saveWav} onClearAll={() => setSong(clearAll)} />
@@ -177,6 +197,8 @@ export default function App() {
         </div>
         {!started && <StartOverlay supported={supported} onStart={start} />}
       </div>
+
+      {showTutorial && <Tutorial onClose={closeTutorial} onFinish={finishTutorial} />}
     </main>
   );
 }

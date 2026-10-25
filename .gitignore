@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 
 .superpowers
+
+# Film masters (web encodes live in public/tutorial)
+film/out

@@ -1,8 +1,13 @@
 import "@testing-library/jest-dom/vitest";
-import { afterEach } from "vitest";
+import { afterEach, beforeEach } from "vitest";
 import { cleanup } from "@testing-library/react";
 
 afterEach(cleanup);
+
+// Most tests exercise the app itself, so the first-visit tutorial starts dismissed.
+beforeEach(() => {
+  if (typeof localStorage !== "undefined") localStorage.setItem("beatmaker.tutorialSeen", "1");
+});
 
 // jsdom has no PointerEvent; a MouseEvent subclass carries clientX and pointerId.
 if (typeof window !== "undefined" && !window.PointerEvent) {

@@ -72,9 +72,9 @@ describe("SongActions", () => {
     expect(h.onClearAll).toHaveBeenCalled();
   });
 
-  test("busy disables Save WAV and shows Rendering…", () => {
+  test("busy disables Save WAV and shows Saving…", () => {
     setupActions({ busy: true });
-    expect(screen.getByRole("button", { name: "Rendering…" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Saving…" })).toBeDisabled();
   });
 });
 

@@ -1,0 +1,281 @@
+.tut {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: color-mix(in srgb, var(--ink) 45%, transparent);
+  backdrop-filter: blur(3px);
+}
+
+.tut__card {
+  position: relative;
+  width: min(560px, 100%);
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 28px 24px 24px;
+  background: var(--paper);
+  border-radius: 22px;
+  text-align: center;
+  box-shadow: 0 18px 50px rgb(22 32 74 / 25%);
+  animation: tut-in 220ms ease-out;
+}
+
+/* Phones: a sheet pinned to the bottom, within reach of the thumb. */
+@media (max-width: 600px) {
+  .tut {
+    place-items: end stretch;
+    padding: 0;
+  }
+
+  .tut__card {
+    width: 100%;
+    border-radius: 22px 22px 0 0;
+    padding: 24px 20px calc(20px + env(safe-area-inset-bottom));
+    animation-name: tut-up;
+  }
+}
+
+.tut__skip {
+  justify-self: end;
+  margin: -20px -12px -4px 0;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+
+.tut__skip:hover {
+  background: var(--sky);
+}
+
+.tut__count {
+  margin: 8px 0 0;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.tut__title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.tut__body {
+  margin: 0;
+  max-width: 34ch;
+  color: var(--ink-soft);
+}
+
+.tut__dots {
+  display: flex;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.tut__dots span {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #c9d3ea;
+  transition: width 200ms;
+}
+
+.tut__dots span.is-on {
+  width: 22px;
+  background: var(--ink);
+}
+
+.tut__nav {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  justify-content: center;
+}
+
+.tut__btn {
+  flex: 0 1 180px;
+  min-height: 52px;
+  padding: 0 24px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: var(--text-lg);
+  font-weight: 800;
+}
+
+.tut__btn:hover {
+  background: #26326a;
+}
+
+.tut__btn--light {
+  background: var(--sky);
+  color: var(--ink);
+}
+
+.tut__btn--light:hover {
+  background: #d4def3;
+}
+
+@media (max-width: 600px) {
+  .tut__btn {
+    flex: 1 1 0;
+  }
+}
+
+/* Demo film */
+.tut-video {
+  display: block;
+  width: 100%;
+  border-radius: 16px;
+  background: var(--sky);
+  object-fit: cover;
+}
+
+.tut-video--wide {
+  aspect-ratio: 16 / 9;
+}
+
+/* Square film, capped so the sheet still fits short phones. */
+.tut-video--square {
+  aspect-ratio: 1;
+  width: min(100%, 42vh);
+}
+
+/* Illustrations */
+.tut-art {
+  position: relative;
+  width: 100%;
+  height: 110px;
+  display: grid;
+  place-items: center;
+  background: var(--sky);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.tut-keys {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+  width: 80%;
+  height: 44px;
+}
+
+.tut-keys span {
+  border-radius: 8px;
+  background: var(--melody);
+  opacity: 0.55;
+  animation: tut-key 2.4s calc(var(--i) * 0.2s + 0.1s) infinite;
+}
+
+.tut-pointer {
+  position: absolute;
+  top: 50%;
+  left: 10%;
+  color: var(--ink);
+  fill: var(--paper);
+  animation: tut-sweep 2.4s ease-in-out infinite;
+}
+
+.tut-art--loop {
+  grid-auto-flow: column;
+  justify-content: center;
+  gap: 8px;
+}
+
+.tut-art--loop span {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 2px solid var(--bass);
+}
+
+.tut-art--loop span.is-filled {
+  background: var(--bass);
+  animation: tut-pulse 1.6s calc(var(--i) * 0.2s) infinite;
+}
+
+.tut-art--loop .tut-x {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-left: 10px;
+  border: 0;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.tut-art--controls {
+  grid-auto-flow: column;
+  justify-content: center;
+  gap: 12px;
+}
+
+.tut-pill {
+  padding: 6px 16px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font-weight: 800;
+}
+
+.tut-pill--light {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.tut-slider {
+  position: relative;
+  width: 90px;
+  height: 6px;
+  border-radius: 999px;
+  background: #c9d3ea;
+}
+
+.tut-slider span {
+  position: absolute;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--ink);
+  transform: translate(-50%, -50%);
+  animation: tut-slide 2.4s ease-in-out infinite alternate;
+}
+
+@keyframes tut-in {
+  from { opacity: 0; transform: scale(0.96); }
+}
+
+@keyframes tut-up {
+  from { transform: translateY(40px); opacity: 0; }
+}
+
+@keyframes tut-sweep {
+  0%, 10% { left: 10%; }
+  70%, 100% { left: 85%; }
+}
+
+@keyframes tut-key {
+  0%, 8% { opacity: 1; transform: scaleY(1.12); }
+  20%, 100% { opacity: 0.55; transform: none; }
+}
+
+@keyframes tut-pulse {
+  0%, 15% { transform: scale(1.35); }
+  35%, 100% { transform: none; }
+}
+
+@keyframes tut-slide {
+  from { left: 15%; }
+  to { left: 85%; }
+}

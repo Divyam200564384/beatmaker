@@ -19,6 +19,29 @@
   gap: 2px;
 }
 
+.app__titlerow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+
+.app__howto {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--paper);
+  font-weight: 700;
+  font-size: var(--text-sm);
+}
+
+.app__howto:hover {
+  background: var(--sky);
+}
+
 .app__title {
   margin: 0;
   font-size: var(--text-xl);

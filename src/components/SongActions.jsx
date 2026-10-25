@@ -11,7 +11,11 @@ export default function SongActions({ busy, onShare, onSaveWav, onClearAll }) {
       </button>
       <button type="button" className="actions__btn" onClick={onSaveWav} disabled={busy}>
         <Download size={18} aria-hidden="true" />
-        {busy ? "Rendering…" : "Save WAV"}
+        {/* Both labels share one cell so the button never changes width (no reflow on phones). */}
+        <span className="actions__label">
+          <span aria-hidden={busy}>Save WAV</span>
+          <span aria-hidden={!busy}>Saving…</span>
+        </span>
       </button>
       <button type="button" className="actions__btn" onClick={onClearAll}>
         <Trash2 size={18} aria-hidden="true" />
